@@ -1,0 +1,14 @@
+ chọn ngẫu nhiên 5 mã cổ phiếu từ dữ liệu API trả về.
+- Trích xuất các thông tin chính gồm:
+  + Mã chứng khoán
+  + Giá tham chiếu
+  + Giá trần
+  + Giá sàn
+  + Giá mua 1, 2, 3
+  + Khối lượng mua 1, 2, 3
+  + Giá bán 1, 2, 3
+  + Khối lượng bán 1, 2, 3
+  + Giá khớp lệnh nếu có
+  + Khối lượng khớp lệnh nếu có
+  + Thời gian lấy dữ liệu
+- Lưu kết quả thành file  tên `bang_gia_chung_khoan.txt`. Lưu trong thư mục hiện tại
