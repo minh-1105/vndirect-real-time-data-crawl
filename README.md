@@ -8,7 +8,7 @@ Check ```parser.py``` for detail fields of each message.
 Open PowerShell in this project folder:
 
 ```powershell
-cd C:\Users\minht\Downloads\Real-time-data-vndirect-master\Real-time-data-vndirect-master
+cd ~\Real-time-data-vndirect-master\Real-time-data-vndirect-master
 ```
 
 If the virtual environment already exists, run the snapshot example:
