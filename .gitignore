@@ -4,3 +4,8 @@ venv/
 realtime.txt
 test_BA.txt
 .vscode/
+request.txt
+bang_gia_chung_khoan_realtime.txt
+bang_gia_chung_khoan.txt
+generate_bang_gia_R.txt
+bang_gia_chung_khoan_R_realtime.csv
