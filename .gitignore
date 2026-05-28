@@ -3,3 +3,4 @@ venv/
 *.pyc
 realtime.txt
 test_BA.txt
+.vscode/
