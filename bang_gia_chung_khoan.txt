@@ -1,83 +1,104 @@
 Co phieu 1
-Mã chứng khoán: N/A
-Giá tham chiếu: N/A
-Giá trần: N/A
-Giá sàn: N/A
-Giá mua 1: N/A
-Khối lượng mua 1: N/A
-Giá mua 2: N/A
-Khối lượng mua 2: N/A
-Giá mua 3: N/A
-Khối lượng mua 3: N/A
-Giá bán 1: N/A
-Khối lượng bán 1: N/A
-Giá bán 2: N/A
-Khối lượng bán 2: N/A
-Giá bán 3: N/A
-Khối lượng bán 3: N/A
-Giá khớp lệnh: N/A
-Khối lượng khớp lệnh: N/A
-Thời gian lấy dữ liệu: 2026-05-27 21:04:32
+Mã chứng khoán: VND
+Giá tham chiếu: 17.75
+Giá trần: 18.95
+Giá sàn: 16.55
+Giá mua 1: 18.2
+Khối lượng mua 1: 16500.0
+Giá mua 2: 18.15
+Khối lượng mua 2: 15740.0
+Giá mua 3: 18.1
+Khối lượng mua 3: 0.0
+Giá bán 1: 18.25
+Khối lượng bán 1: 6070.0
+Giá bán 2: 18.3
+Khối lượng bán 2: 16000.0
+Giá bán 3: 18.35
+Khối lượng bán 3: 15740.0
+Giá khớp lệnh: 18.2
+Khối lượng khớp lệnh: 500.0
+Thời gian lấy dữ liệu: 09:30:17
 
 Co phieu 2
-Mã chứng khoán: N/A
-Giá tham chiếu: N/A
-Giá trần: N/A
-Giá sàn: N/A
-Giá mua 1: N/A
-Khối lượng mua 1: N/A
-Giá mua 2: N/A
-Khối lượng mua 2: N/A
-Giá mua 3: N/A
-Khối lượng mua 3: N/A
-Giá bán 1: N/A
-Khối lượng bán 1: N/A
-Giá bán 2: N/A
-Khối lượng bán 2: N/A
-Giá bán 3: N/A
-Khối lượng bán 3: N/A
-Giá khớp lệnh: N/A
-Khối lượng khớp lệnh: N/A
-Thời gian lấy dữ liệu: 2026-05-27 21:04:32
+Mã chứng khoán: FPT
+Giá tham chiếu: 72.6
+Giá trần: 77.6
+Giá sàn: 67.6
+Giá mua 1: 73.0
+Khối lượng mua 1: 11280.0
+Giá mua 2: 72.9
+Khối lượng mua 2: 1230.0
+Giá mua 3: 72.8
+Khối lượng mua 3: 0.0
+Giá bán 1: 73.1
+Khối lượng bán 1: 4600.0
+Giá bán 2: 73.2
+Khối lượng bán 2: 11270.0
+Giá bán 3: 73.3
+Khối lượng bán 3: 1230.0
+Giá khớp lệnh: 73.1
+Khối lượng khớp lệnh: 100.0
+Thời gian lấy dữ liệu: 09:30:15
 
 Co phieu 3
-Mã chứng khoán: N/A
-Giá tham chiếu: N/A
-Giá trần: N/A
-Giá sàn: N/A
-Giá mua 1: N/A
-Khối lượng mua 1: N/A
-Giá mua 2: N/A
-Khối lượng mua 2: N/A
-Giá mua 3: N/A
-Khối lượng mua 3: N/A
-Giá bán 1: N/A
-Khối lượng bán 1: N/A
-Giá bán 2: N/A
-Khối lượng bán 2: N/A
-Giá bán 3: N/A
-Khối lượng bán 3: N/A
-Giá khớp lệnh: N/A
-Khối lượng khớp lệnh: N/A
-Thời gian lấy dữ liệu: 2026-05-27 21:04:32
+Mã chứng khoán: HPG
+Giá tham chiếu: 24.15
+Giá trần: 25.8
+Giá sàn: 22.5
+Giá mua 1: 24.2
+Khối lượng mua 1: 18710.0
+Giá mua 2: 24.15
+Khối lượng mua 2: 13770.0
+Giá mua 3: 24.1
+Khối lượng mua 3: 0.0
+Giá bán 1: 24.25
+Khối lượng bán 1: 26090.0
+Giá bán 2: 24.3
+Khối lượng bán 2: 18640.0
+Giá bán 3: 24.35
+Khối lượng bán 3: 13770.0
+Giá khớp lệnh: 24.25
+Khối lượng khớp lệnh: 100.0
+Thời gian lấy dữ liệu: 09:30:15
 
 Co phieu 4
-Mã chứng khoán: N/A
-Giá tham chiếu: N/A
-Giá trần: N/A
-Giá sàn: N/A
-Giá mua 1: N/A
-Khối lượng mua 1: N/A
-Giá mua 2: N/A
-Khối lượng mua 2: N/A
-Giá mua 3: N/A
-Khối lượng mua 3: N/A
-Giá bán 1: N/A
-Khối lượng bán 1: N/A
-Giá bán 2: N/A
-Khối lượng bán 2: N/A
-Giá bán 3: N/A
-Khối lượng bán 3: N/A
-Giá khớp lệnh: N/A
-Khối lượng khớp lệnh: N/A
-Thời gian lấy dữ liệu: 2026-05-27 21:04:32
+Mã chứng khoán: SSI
+Giá tham chiếu: 27.9
+Giá trần: 29.85
+Giá sàn: 25.95
+Giá mua 1: 28.15
+Khối lượng mua 1: 23040.0
+Giá mua 2: 28.1
+Khối lượng mua 2: 70330.0
+Giá mua 3: 28.05
+Khối lượng mua 3: 0.0
+Giá bán 1: 28.2
+Khối lượng bán 1: 33010.0
+Giá bán 2: 28.25
+Khối lượng bán 2: 23040.0
+Giá bán 3: 28.3
+Khối lượng bán 3: 70330.0
+Giá khớp lệnh: 28.15
+Khối lượng khớp lệnh: 60.0
+Thời gian lấy dữ liệu: 09:30:15
+
+Co phieu 5
+Mã chứng khoán: VCB
+Giá tham chiếu: 64.2
+Giá trần: 68.6
+Giá sàn: 59.8
+Giá mua 1: 64.0
+Khối lượng mua 1: 2790.0
+Giá mua 2: 63.9
+Khối lượng mua 2: 2500.0
+Giá mua 3: 63.8
+Khối lượng mua 3: 0.0
+Giá bán 1: 64.1
+Khối lượng bán 1: 2310.0
+Giá bán 2: 64.2
+Khối lượng bán 2: 2790.0
+Giá bán 3: 64.3
+Khối lượng bán 3: 2500.0
+Giá khớp lệnh: 64.1
+Khối lượng khớp lệnh: 10.0
+Thời gian lấy dữ liệu: 09:30:18

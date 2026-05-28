@@ -3,17 +3,21 @@ import threading
 import time
 import json
 import sys
+from urllib.parse import urlencode
+from urllib.request import urlopen
 from datetime import datetime
 from pathlib import Path
 
 try:
-    from vndirect_realtime import create_client, stock_topic, transaction_topic
+    from vndirect_realtime import create_client, stock_topic, transaction_topic, MQTT_HOST
+    from mqtt_decoder import parse_payload, decode_fields, parse_stock_message
 except ModuleNotFoundError as exc:
     missing_module = exc.name or "dependency"
     raise SystemExit(
         "Thieu thu vien de chay realtime feed. "
         f"Module bi thieu: {missing_module}. "
-        "Hay cai dependency bang lenh: python -m pip install -r requirements.txt"
+        "Hay cai dependency toi thieu bang lenh: "
+        "python -m pip install paho-mqtt websockets"
     ) from exc
 
 
@@ -22,6 +26,7 @@ STOCK_ID_DIR = BASE_DIR / "StockIDs"
 OUTPUT_FILE = BASE_DIR / "bang_gia_chung_khoan.txt"
 RANDOM_COUNT = 5
 WAIT_TIMEOUT_SECONDS = 20
+SNAPSHOT_API_URL = "https://price-streaming-api-free.vndirect.com.vn/v2/stocks/snapshot"
 
 
 def load_stock_codes():
@@ -78,58 +83,85 @@ def merge_stock_data(code, sp_data, ba_data, fetched_at):
         "Giá tham chiếu": pick_value(sp_data.get("basicPrice")),
         "Giá trần": pick_value(sp_data.get("ceilingPrice")),
         "Giá sàn": pick_value(sp_data.get("floorPrice")),
-        "Giá mua 1": pick_value(ba_data.get("bidPrice01")),
-        "Khối lượng mua 1": pick_value(ba_data.get("bidQtty01")),
-        "Giá mua 2": pick_value(ba_data.get("bidPrice02")),
-        "Khối lượng mua 2": pick_value(ba_data.get("bidQtty02")),
-        "Giá mua 3": pick_value(ba_data.get("bidPrice03")),
-        "Khối lượng mua 3": pick_value(ba_data.get("bidQtty03")),
-        "Giá bán 1": pick_value(ba_data.get("offerPrice01")),
-        "Khối lượng bán 1": pick_value(ba_data.get("offerQtty01")),
-        "Giá bán 2": pick_value(ba_data.get("offerPrice02")),
-        "Khối lượng bán 2": pick_value(ba_data.get("offerQtty02")),
-        "Giá bán 3": pick_value(ba_data.get("offerPrice03")),
-        "Khối lượng bán 3": pick_value(ba_data.get("offerQtty03")),
-        "Giá khớp lệnh": pick_value(ba_data.get("matchPrice"), sp_data.get("currentPrice")),
-        "Khối lượng khớp lệnh": pick_value(ba_data.get("matchQtty"), sp_data.get("currentQtty")),
+        "Giá mua 1": pick_value(ba_data.get("bidPrice01"), sp_data.get("bidPrice01")),
+        "Khối lượng mua 1": pick_value(ba_data.get("bidQtty01"), sp_data.get("bidQtty01")),
+        "Giá mua 2": pick_value(ba_data.get("bidPrice02"), sp_data.get("bidPrice02")),
+        "Khối lượng mua 2": pick_value(ba_data.get("bidQtty02"), sp_data.get("bidQtty02")),
+        "Giá mua 3": pick_value(ba_data.get("bidPrice03"), sp_data.get("bidPrice03")),
+        "Khối lượng mua 3": pick_value(ba_data.get("bidQtty03"), sp_data.get("bidQtty03")),
+        "Giá bán 1": pick_value(ba_data.get("offerPrice01"), sp_data.get("offerPrice01")),
+        "Khối lượng bán 1": pick_value(ba_data.get("offerQtty01"), sp_data.get("offerQtty01")),
+        "Giá bán 2": pick_value(ba_data.get("offerPrice02"), sp_data.get("offerPrice02")),
+        "Khối lượng bán 2": pick_value(ba_data.get("offerQtty02"), sp_data.get("offerQtty02")),
+        "Giá bán 3": pick_value(ba_data.get("offerPrice03"), sp_data.get("offerPrice03")),
+        "Khối lượng bán 3": pick_value(ba_data.get("offerQtty03"), sp_data.get("offerQtty03")),
+        "Giá khớp lệnh": pick_value(ba_data.get("matchPrice"), sp_data.get("matchPrice")),
+        "Khối lượng khớp lệnh": pick_value(ba_data.get("matchQtty"), sp_data.get("matchQtty")),
         "Thời gian lấy dữ liệu": pick_value(ba_data.get("time"), sp_data.get("time"), fetched_at),
     }
 
 
-def collect_realtime_rows(selected_codes):
+def fetch_snapshot_rows(selected_codes):
+    query = urlencode({"codes": ",".join(selected_codes)})
+    with urlopen(f"{SNAPSHOT_API_URL}?{query}", timeout=15) as response:
+        payload = response.read().decode("utf-8")
+
+    raw_rows = json.loads(payload)
     sp_map = {}
+
+    for raw_row in raw_rows:
+        fields = decode_fields(raw_row)
+        if not fields:
+            continue
+        message_type = fields[0]
+        data = parse_stock_message(message_type, fields[1:])
+        code = data.get("code")
+        if code in selected_codes:
+            sp_map[code] = data
+
+    return sp_map
+
+
+def collect_realtime_rows(selected_codes):
+    sp_map = fetch_snapshot_rows(selected_codes)
     ba_map = {}
     done = threading.Event()
     topics = [stock_topic(code) for code in selected_codes]
     topics += [transaction_topic(code) for code in selected_codes]
 
     def on_message(client, userdata, msg):
-        try:
-            payload = msg.payload.decode("utf-8", errors="replace")
-            parsed = json.loads(payload)
-        except Exception:
+        payload = msg.payload.decode("utf-8", errors="replace")
+        parsed_payload = parse_payload(payload)
+        if not parsed_payload:
             return
 
-        topic = msg.topic
-        parts = topic.split("/")
-        if len(parts) < 2:
-            return
+        for decoded_message in parsed_payload["messages"]:
+            message_type = decoded_message["messageType"]
+            data = decoded_message["data"]
 
-        if parts[0] == "T" and len(parts) >= 3:
-            code = parts[2]
-            if isinstance(parsed, dict):
-                ba_map[code] = parsed
-        else:
-            code = parts[1]
-            if isinstance(parsed, dict):
-                sp_map[code] = parsed
+            if message_type in {"SBS", "SMA", "SFU"}:
+                code = data.get("code")
+                if code in selected_codes:
+                    sp_map.setdefault(code, {}).update(data)
+            elif message_type == "SBA":
+                code = data.get("code")
+                if code in selected_codes:
+                    ba_map.setdefault(code, {}).update(data)
+            elif message_type == "ST":
+                code = data.get("symbol")
+                if code in selected_codes:
+                    ba_map.setdefault(code, {}).update({
+                        "matchPrice": data.get("last"),
+                        "matchQtty": data.get("lastVol"),
+                        "time": data.get("time"),
+                    })
 
         if all(code in sp_map and code in ba_map for code in selected_codes):
             done.set()
 
     client = create_client(topics)
     client.on_message = on_message
-    client.connect_async("price-streaming-free.vndirect.com.vn", 443, keepalive=30)
+    client.connect_async(MQTT_HOST, 443, keepalive=30)
     loop_thread = threading.Thread(target=client.loop_forever, daemon=True)
     loop_thread.start()
 

@@ -1,93 +1,94 @@
 # VNDIRECT Real-Time Data Crawl
 
-Repo nay gom cac script thu nghiem de lay du lieu gia chung khoan tu he thong VNDIRECT, bao gom:
+This repository contains experimental scripts for retrieving stock price data from VNDIRECT services, including:
 
-- `snapshot.py`: goi snapshot API theo danh sach ma.
-- `realtime.py`: websocket realtime cu.
-- `vndirect_realtime.py`: MQTT realtime.
-- `parser_message.py`: parser cho cac ban tin `SP`, `BA`, `MI`, `DE`.
-- `generate_bang_gia.py`: chon 5 ma co phieu va ghi ket qua vao `bang_gia_chung_khoan.txt`.
+- `snapshot.py`: calls the snapshot API for a list of stock symbols.
+- `realtime.py`: uses the legacy realtime websocket feed.
+- `vndirect_realtime.py`: connects to the MQTT realtime feed.
+- `parser_message.py`: parses `SP`, `BA`, `MI`, and `DE` messages.
+- `generate_bang_gia.py`: selects 5 stock symbols and writes the result to `bang_gia_chung_khoan.txt`.
 
-## ATTENTION!!!!!!!!!
+=======
+## Current Notes
 
-- Endpoint snapshot public dang tra ve du lieu obfuscate, nen khong phu hop de map truc tiep thanh bang gia.
-- `generate_bang_gia.py` hien dung MQTT realtime feed.
-- Neu dang ngoai gio giao dich, script co the ket noi thanh cong nhung khong nhan duoc ban tin nao.
+- The public snapshot endpoint currently returns obfuscated data, so it is not suitable for directly building a quote board.
+- `generate_bang_gia.py` currently uses the MQTT realtime feed.
+- Outside trading hours, the script may connect successfully but still receive no messages.
 
-## Cau truc message
+## Message Types
 
-- `SP` = `StockPartial`: thong tin tong quan cua ma co phieu, gom gia tham chieu, gia tran, gia san, current price...
-- `BA` = `BidAsk`: top 3 gia mua, gia ban, khoi luong, gia khop neu co.
-- `MI` = `MarketInformation`: thong tin chi so thi truong.
-- `DE` = `DerivativeOpt`: thong tin phai sinh.
+- `SP` = `StockPartial`: general stock information such as reference price, ceiling price, floor price, current price, and related fields.
+- `BA` = `BidAsk`: top 3 bid prices, ask prices, quantities, and matched price information when available.
+- `MI` = `MarketInformation`: market index data.
+- `DE` = `DerivativeOpt`: derivatives data.
 
-## Yeu cau
+## Requirements
 
 - Python 3.10+
-- Khuyen nghi dung virtual environment
+- A virtual environment is recommended
 
-Dependency toi thieu de chay cac script hien tai:
+Minimum dependencies required for the current scripts:
 
 ```text
 websockets
 paho-mqtt
 ```
 
-## Cai dat tren Windows
+## Installation on Windows
 
-Mo PowerShell trong thu muc du an:
+Open PowerShell in the project directory:
 
 ```powershell
 cd path\to\vndirect-real-time-data-crawl
 ```
 
-Tao virtual environment:
+Create a virtual environment:
 
 ```powershell
 py -m venv .venv
 ```
 
-Kich hoat virtual environment:
+Activate the virtual environment:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-Cai dependency:
+Install dependencies:
 
 ```powershell
 python -m pip install websockets paho-mqtt
 ```
 
-## Cai dat tren Linux
+## Installation on Linux
 
-Mo terminal trong thu muc du an:
+Open a terminal in the project directory:
 
 ```bash
 cd /path/to/vndirect-real-time-data-crawl
 ```
 
-Tao virtual environment:
+Create a virtual environment:
 
 ```bash
 python3 -m venv .venv
 ```
 
-Kich hoat virtual environment:
+Activate the virtual environment:
 
 ```bash
 source .venv/bin/activate
 ```
 
-Cai dependency:
+Install dependencies:
 
 ```bash
 python -m pip install websockets paho-mqtt
 ```
 
-## Cach dung
+## Usage
 
-### 1. Chay script tao bang gia cho 5 ma ngau nhien
+### 1. Generate a quote board for 5 random stock symbols
 
 Windows:
 
@@ -101,13 +102,13 @@ Linux:
 .venv/bin/python generate_bang_gia.py
 ```
 
-Ket qua duoc ghi vao file:
+The result is written to:
 
 ```text
 bang_gia_chung_khoan.txt
 ```
 
-### 2. Chay script voi 5 ma do ban chi dinh
+### 2. Run the script with 5 specific stock symbols
 
 Windows:
 
@@ -121,13 +122,13 @@ Linux:
 .venv/bin/python generate_bang_gia.py VND FPT HPG SSI VCB
 ```
 
-Rang buoc:
+Constraints:
 
-- Phai truyen dung 5 ma.
-- 5 ma phai khac nhau.
-- Ma phai ton tai trong `StockIDs/*.txt`.
+- You must pass exactly 5 symbols.
+- All 5 symbols must be different.
+- Each symbol must exist in `StockIDs/*.txt`.
 
-### 3. Chay MQTT realtime truc tiep
+### 3. Run the MQTT realtime feed directly
 
 Windows:
 
@@ -141,7 +142,7 @@ Linux:
 .venv/bin/python vndirect_realtime.py
 ```
 
-### 4. Chay websocket realtime cu
+### 4. Run the legacy realtime websocket script
 
 Windows:
 
@@ -155,34 +156,34 @@ Linux:
 .venv/bin/python realtime.py
 ```
 
-Luu y: websocket host cu co the khong con hoat dong on dinh.
+Note: the legacy websocket host may no longer be stable.
 
-## Cac file chinh
+## Main Files
 
-- `generate_bang_gia.py`: script phuc vu yeu cau xuat bang gia 5 ma co phieu.
-- `vndirect_realtime.py`: ket noi MQTT host `price-streaming-free.vndirect.com.vn`.
-- `snapshot.py`: goi snapshot API.
-- `parser_message.py`: parser cac message type.
-- `StockIDs/`: danh sach ma HSX, HNX, UPC.
+- `generate_bang_gia.py`: generates a quote board for 5 stock symbols.
+- `vndirect_realtime.py`: connects to the MQTT host `price-streaming-free.vndirect.com.vn`.
+- `snapshot.py`: calls the snapshot API.
+- `parser_message.py`: parses supported message types.
+- `StockIDs/`: contains symbol lists for HSX, HNX, and UPC.
 
-## Xu ly loi thuong gap
+## Common Errors
 
-- `ModuleNotFoundError`: chua cai dependency trong `.venv`.
-- `Name or service not known`: host cu khong con resolve DNS.
-- `Khong nhan duoc ban tin realtime nao`: thuong xay ra khi ngoai gio giao dich, hoac ma vua chon chua co du lieu phat sinh.
+- `ModuleNotFoundError`: required dependencies are not installed in the active environment.
+- `Name or service not known`: the old host can no longer be resolved by DNS.
+- `Khong nhan duoc ban tin realtime nao`: this usually happens outside trading hours, or when no realtime updates are available for the selected symbols.
 
-## Dau ra mong doi
+## Expected Output
 
-`generate_bang_gia.py` se co gang ghi cac truong sau vao `bang_gia_chung_khoan.txt`:
+`generate_bang_gia.py` attempts to write the following fields to `bang_gia_chung_khoan.txt`:
 
-- Ma chung khoan
-- Gia tham chieu
-- Gia tran
-- Gia san
-- Gia mua 1, 2, 3
-- Khoi luong mua 1, 2, 3
-- Gia ban 1, 2, 3
-- Khoi luong ban 1, 2, 3
-- Gia khop lenh neu co
-- Khoi luong khop lenh neu co
-- Thoi gian lay du lieu
+- Stock symbol
+- Reference price
+- Ceiling price
+- Floor price
+- Bid prices 1, 2, 3
+- Bid quantities 1, 2, 3
+- Ask prices 1, 2, 3
+- Ask quantities 1, 2, 3
+- Matched price, if available
+- Matched quantity, if available
+- Data retrieval time
