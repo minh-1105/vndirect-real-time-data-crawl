@@ -1,49 +1,113 @@
 #!/usr/bin/env Rscript
 
+
 required_packages <- c("jsonlite", "websocket", "later")
+missing_packages <- required_packages[!vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)]
+
+if (length(missing_packages) > 0L) {
+  install.packages(missing_packages, repos = "https://cloud.r-project.org")
+}
+
 missing_packages <- required_packages[!vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)]
 if (length(missing_packages) > 0L) {
   stop(
-    sprintf(
-      "Missing R packages: %s. Install them with: install.packages(c(%s))",
-      paste(missing_packages, collapse = ", "),
-      paste(sprintf("'%s'", missing_packages), collapse = ", ")
-    ),
+    sprintf("Khong the cai package R: %s", paste(missing_packages, collapse = ", ")),
     call. = FALSE
   )
 }
 
-args_all <- commandArgs(trailingOnly = FALSE)
-file_arg <- args_all[grep("^--file=", args_all)]
-script_path <- if (length(file_arg) > 0L) {
-  sub("^--file=", "", file_arg[[1]])
-} else {
-  "generate_bang_gia_realtime.R"
+get_script_path <- function() {
+  args_all <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args_all, value = TRUE)
+  if (length(file_arg) > 0L) {
+    return(normalizePath(sub("^--file=", "", file_arg[[1]]), winslash = "/", mustWork = TRUE))
+  }
+
+  for (index in rev(seq_len(sys.nframe()))) {
+    frame <- sys.frame(index)
+    if (exists("ofile", envir = frame, inherits = FALSE)) {
+      return(normalizePath(get("ofile", envir = frame, inherits = FALSE), winslash = "/", mustWork = TRUE))
+    }
+  }
+
+  if (file.exists("generate_bang_gia_R.R")) {
+    return(normalizePath("generate_bang_gia_R.R", winslash = "/", mustWork = TRUE))
+  }
+
+  normalizePath(getwd(), winslash = "/", mustWork = TRUE)
 }
 
-base_dir <- normalizePath(dirname(script_path), winslash = "/", mustWork = TRUE)
+script_path <- get_script_path()
+base_dir <- if (dir.exists(script_path)) script_path else dirname(script_path)
 stock_id_dir <- file.path(base_dir, "StockIDs")
-output_file <- file.path(base_dir, "bang_gia_chung_khoan_realtime.txt")
+output_file <- "/home/minhtb/Documents/R_/bang_gia_chung_khoan_R_realtime.csv"
 
 random_count <- 5L
+default_codes <- c("VND", "FPT", "HPG", "SSI", "VCB")
 wait_timeout_seconds <- 20
 snapshot_api_url <- "https://price-streaming-api-free.vndirect.com.vn/v2/stocks/snapshot"
 mqtt_url <- "wss://price-streaming-free.vndirect.com.vn/mqtt"
 mqtt_username <- "1d84f25b561f2575"
 keepalive_seconds <- 30L
 
-pick_value <- function(..., default = "N/A") {
+pick_value <- function(..., default = NA_character_) {
   values <- list(...)
   for (value in values) {
     if (!is.null(value) && !identical(value, "") && !is.na(value)) {
-      return(value)
+      return(as.character(value))
     }
   }
   default
 }
 
+build_empty_quote_board <- function() {
+  data.frame(
+    Ma_CK = character(),
+    TC = character(),
+    Tran = character(),
+    San = character(),
+    Gia_Mua_1 = character(),
+    KL_Mua_1 = character(),
+    Gia_Mua_2 = character(),
+    KL_Mua_2 = character(),
+    Gia_Mua_3 = character(),
+    KL_Mua_3 = character(),
+    Gia_Ban_1 = character(),
+    KL_Ban_1 = character(),
+    Gia_Ban_2 = character(),
+    KL_Ban_2 = character(),
+    Gia_Ban_3 = character(),
+    KL_Ban_3 = character(),
+    Gia_Khop_Lenh = character(),
+    KL_Khop_Lenh = character(),
+    Thoi_Gian = character(),
+    stringsAsFactors = FALSE
+  )
+}
+
+initialize_output_csv <- function() {
+  if (!file.exists(output_file)) {
+    utils::write.csv(
+      build_empty_quote_board(),
+      output_file,
+      row.names = FALSE,
+      fileEncoding = "UTF-8"
+    )
+  }
+
+  invisible(output_file)
+}
+
 load_stock_codes <- function() {
+  if (!dir.exists(stock_id_dir)) {
+    return(character())
+  }
+
   files <- sort(list.files(stock_id_dir, pattern = "\\.txt$", full.names = TRUE))
+  if (length(files) == 0L) {
+    return(character())
+  }
+
   codes <- character()
 
   for (path in files) {
@@ -53,33 +117,54 @@ load_stock_codes <- function() {
     codes <- c(codes, cleaned)
   }
 
-  unique_codes <- sort(unique(codes))
-  if (length(unique_codes) < random_count) {
-    stop(sprintf("Not enough stock codes to select %d random symbols.", random_count), call. = FALSE)
-  }
+  unique(sort(unique(codes)))
+}
 
-  unique_codes
+parse_codes_text <- function(text) {
+  codes <- unlist(strsplit(toupper(trimws(text)), "[,[:space:]]+", perl = TRUE))
+  codes[nzchar(codes)]
+}
+
+validate_code_format <- function(codes) {
+  invalid_codes <- codes[!grepl("^[A-Z0-9]+$", codes)]
+  if (length(invalid_codes) > 0L) {
+    stop(sprintf("Ma khong dung dinh dang: %s", paste(invalid_codes, collapse = ", ")), call. = FALSE)
+  }
 }
 
 select_codes <- function(all_codes, args) {
-  if (length(args) == 0L) {
-    return(sample(all_codes, random_count))
+  cli_codes <- toupper(trimws(args))
+  cli_codes <- cli_codes[nzchar(cli_codes)]
+  if (length(cli_codes) > 0L) {
+    selected_codes <- cli_codes
+  } else if (exists("selected_codes_input", envir = .GlobalEnv, inherits = FALSE)) {
+    selected_codes <- toupper(trimws(get("selected_codes_input", envir = .GlobalEnv, inherits = FALSE)))
+    selected_codes <- selected_codes[nzchar(selected_codes)]
+  } else if (interactive()) {
+    selected_codes <- default_codes
+  } else {
+    selected_codes <- default_codes
   }
 
-  selected_codes <- toupper(trimws(args))
-  selected_codes <- selected_codes[nzchar(selected_codes)]
+  if (length(selected_codes) == 0L) {
+    stop("Chua nhap ma co phieu.", call. = FALSE)
+  }
 
   if (length(selected_codes) != random_count) {
-    stop(sprintf("Please provide exactly %d stock symbols.", random_count), call. = FALSE)
-  }
-
-  invalid_codes <- selected_codes[!selected_codes %in% all_codes]
-  if (length(invalid_codes) > 0L) {
-    stop(sprintf("Invalid symbols: %s", paste(invalid_codes, collapse = ", ")), call. = FALSE)
+    stop(sprintf("Hay nhap dung %d ma co phieu.", random_count), call. = FALSE)
   }
 
   if (length(unique(selected_codes)) != random_count) {
-    stop("All 5 stock symbols must be different.", call. = FALSE)
+    stop("5 ma co phieu phai khac nhau.", call. = FALSE)
+  }
+
+  validate_code_format(selected_codes)
+
+  if (length(all_codes) > 0L) {
+    invalid_codes <- selected_codes[!selected_codes %in% all_codes]
+    if (length(invalid_codes) > 0L) {
+      stop(sprintf("Ma khong hop le: %s", paste(invalid_codes, collapse = ", ")), call. = FALSE)
+    }
   }
 
   selected_codes
@@ -109,7 +194,7 @@ map_fields <- function(field_names, values) {
 }
 
 parse_stock_message <- function(message_type, values) {
-  stock_type <- values[[2]]
+  stock_type <- if (length(values) >= 2L) values[[2]] else NA_character_
 
   if (identical(message_type, "SFU")) {
     if (identical(stock_type, "ST")) {
@@ -233,8 +318,7 @@ parse_payload <- function(payload) {
     messages[[length(messages) + 1L]] <- list(
       roomName = room_name,
       messageType = message_type,
-      data = data,
-      decodedFields = fields
+      data = data
     )
   }
 
@@ -255,7 +339,6 @@ fetch_snapshot_rows <- function(selected_codes) {
 
     message_type <- fields[[1]]
     body <- fields[-1]
-
     if (identical(message_type, "SFU")) {
       data <- parse_stock_message(message_type, body)
       code <- data$code
@@ -354,6 +437,7 @@ decode_remaining_length <- function(buffer, start_index) {
     if (bitwAnd(encoded_byte, 128L) == 0L) {
       break
     }
+
     multiplier <- multiplier * 128L
   }
 
@@ -373,7 +457,6 @@ parse_mqtt_packets <- function(buffer) {
   offset <- 1L
 
   while (offset <= length(buffer)) {
-    first_byte <- as.integer(buffer[[offset]])
     remaining <- decode_remaining_length(buffer, offset + 1L)
     if (is.null(remaining)) {
       break
@@ -385,8 +468,7 @@ parse_mqtt_packets <- function(buffer) {
       break
     }
 
-    packet_bytes <- buffer[offset:packet_end]
-    packets[[length(packets) + 1L]] <- packet_bytes
+    packets[[length(packets) + 1L]] <- buffer[offset:packet_end]
     offset <- packet_end + 1L
   }
 
@@ -397,10 +479,8 @@ parse_mqtt_packets <- function(buffer) {
 parse_publish_packet <- function(packet_bytes) {
   first_byte <- as.integer(packet_bytes[[1]])
   qos <- bitwAnd(bitwShiftR(first_byte, 1L), 0x03)
-
   remaining <- decode_remaining_length(packet_bytes, 2L)
   body_offset <- 2L + remaining$consumed
-
   topic_field <- read_utf8_field(packet_bytes, body_offset)
   next_offset <- topic_field$next_offset
 
@@ -411,43 +491,46 @@ parse_publish_packet <- function(packet_bytes) {
   payload <- if (next_offset <= length(packet_bytes)) packet_bytes[next_offset:length(packet_bytes)] else raw()
   list(topic = topic_field$value, payload = rawToChar(payload, multiple = FALSE))
 }
-
+#Q1
 merge_stock_data <- function(code, sp_data, ba_data, fetched_at) {
-  list(
-    "Mã chứng khoán" = code,
-    "Giá tham chiếu" = pick_value(sp_data$basicPrice),
-    "Giá trần" = pick_value(sp_data$ceilingPrice),
-    "Giá sàn" = pick_value(sp_data$floorPrice),
-    "Giá mua 1" = pick_value(ba_data$bidPrice01, sp_data$bidPrice01),
-    "Khối lượng mua 1" = pick_value(ba_data$bidQtty01, sp_data$bidQtty01),
-    "Giá mua 2" = pick_value(ba_data$bidPrice02, sp_data$bidPrice02),
-    "Khối lượng mua 2" = pick_value(ba_data$bidQtty02, sp_data$bidQtty02),
-    "Giá mua 3" = pick_value(ba_data$bidPrice03, sp_data$bidPrice03),
-    "Khối lượng mua 3" = pick_value(ba_data$bidQtty03, sp_data$bidQtty03),
-    "Giá bán 1" = pick_value(ba_data$offerPrice01, sp_data$offerPrice01),
-    "Khối lượng bán 1" = pick_value(ba_data$offerQtty01, sp_data$offerQtty01),
-    "Giá bán 2" = pick_value(ba_data$offerPrice02, sp_data$offerPrice02),
-    "Khối lượng bán 2" = pick_value(ba_data$offerQtty02, sp_data$offerQtty02),
-    "Giá bán 3" = pick_value(ba_data$offerPrice03, sp_data$offerPrice03),
-    "Khối lượng bán 3" = pick_value(ba_data$offerQtty03, sp_data$offerQtty03),
-    "Giá khớp lệnh" = pick_value(ba_data$matchPrice, sp_data$matchPrice),
-    "Khối lượng khớp lệnh" = pick_value(ba_data$matchQtty, sp_data$matchQtty),
-    "Thời gian lấy dữ liệu" = pick_value(ba_data$time, sp_data$time, fetched_at)
+  sp_data <- if (is.null(sp_data)) list() else sp_data
+  ba_data <- if (is.null(ba_data)) list() else ba_data
+
+  data.frame(
+    Ma_CK = code,
+    TC = pick_value(sp_data$basicPrice),
+    Tran = pick_value(sp_data$ceilingPrice),
+    San = pick_value(sp_data$floorPrice),
+    Gia_Mua_1 = pick_value(ba_data$bidPrice01, sp_data$bidPrice01),
+    KL_Mua_1 = pick_value(ba_data$bidQtty01, sp_data$bidQtty01),
+    Gia_Mua_2 = pick_value(ba_data$bidPrice02, sp_data$bidPrice02),
+    KL_Mua_2 = pick_value(ba_data$bidQtty02, sp_data$bidQtty02),
+    Gia_Mua_3 = pick_value(ba_data$bidPrice03, sp_data$bidPrice03),
+    KL_Mua_3 = pick_value(ba_data$bidQtty03, sp_data$bidQtty03),
+    Gia_Ban_1 = pick_value(ba_data$offerPrice01, sp_data$offerPrice01),
+    KL_Ban_1 = pick_value(ba_data$offerQtty01, sp_data$offerQtty01),
+    Gia_Ban_2 = pick_value(ba_data$offerPrice02, sp_data$offerPrice02),
+    KL_Ban_2 = pick_value(ba_data$offerQtty02, sp_data$offerQtty02),
+    Gia_Ban_3 = pick_value(ba_data$offerPrice03, sp_data$offerPrice03),
+    KL_Ban_3 = pick_value(ba_data$offerQtty03, sp_data$offerQtty03),
+    Gia_Khop_Lenh = pick_value(ba_data$matchPrice, sp_data$matchPrice),
+    KL_Khop_Lenh = pick_value(ba_data$matchQtty, sp_data$matchQtty),
+    Thoi_Gian = pick_value(ba_data$time, sp_data$time, fetched_at),
+    stringsAsFactors = FALSE
   )
 }
 
-format_block <- function(index, record) {
-  lines <- c(sprintf("Co phieu %d", index))
-  for (name in names(record)) {
-    lines <- c(lines, sprintf("%s: %s", name, record[[name]]))
-  }
-  paste(lines, collapse = "\n")
+get_text_by_id <- function(page, id) {
+  NA_character_
+}
+
+get_stock_data <- function(page, ma_ck, sp_map, ba_map, fetched_at) {
+  merge_stock_data(ma_ck, sp_map[[ma_ck]], ba_map[[ma_ck]], fetched_at)
 }
 
 collect_realtime_rows <- function(selected_codes) {
   sp_map <- fetch_snapshot_rows(selected_codes)
   ba_map <- list()
-
   topics <- c(
     vapply(selected_codes, stock_topic, character(1)),
     vapply(selected_codes, transaction_topic, character(1))
@@ -458,7 +541,6 @@ collect_realtime_rows <- function(selected_codes) {
   state$subscribed <- FALSE
   state$buffer <- raw()
   state$error <- NULL
-  state$closed <- FALSE
   state$publish_count <- 0L
   state$decoded_count <- 0L
   state$transaction_count <- 0L
@@ -502,57 +584,59 @@ collect_realtime_rows <- function(selected_codes) {
         next
       }
 
-      if (packet_type == 3L) {
-        state$publish_count <- state$publish_count + 1L
-        publish <- parse_publish_packet(packet)
-        parsed_payload <- parse_payload(publish$payload)
-        if (is.null(parsed_payload)) {
-          next
-        }
+      if (packet_type != 3L) {
+        next
+      }
 
-        for (decoded_message in parsed_payload$messages) {
-          state$decoded_count <- state$decoded_count + 1L
-          message_type <- decoded_message$messageType
-          data <- decoded_message$data
+      state$publish_count <- state$publish_count + 1L
+      publish <- parse_publish_packet(packet)
+      parsed_payload <- parse_payload(publish$payload)
+      if (is.null(parsed_payload)) {
+        next
+      }
 
-          if (message_type %in% c("SBS", "SMA", "SFU")) {
-            code <- data$code
-            if (!is.null(code) && code %in% selected_codes) {
-              existing <- sp_map[[code]]
-              if (is.null(existing)) {
-                sp_map[[code]] <- data
-              } else {
-                existing[names(data)] <- data
-                sp_map[[code]] <- existing
-              }
+      for (decoded_message in parsed_payload$messages) {
+        state$decoded_count <- state$decoded_count + 1L
+        message_type <- decoded_message$messageType
+        data <- decoded_message$data
+
+        if (message_type %in% c("SBS", "SMA", "SFU")) {
+          code <- data$code
+          if (!is.null(code) && code %in% selected_codes) {
+            existing <- sp_map[[code]]
+            if (is.null(existing)) {
+              sp_map[[code]] <- data
+            } else {
+              existing[names(data)] <- data
+              sp_map[[code]] <- existing
             }
-          } else if (identical(message_type, "SBA")) {
-            code <- data$code
-            if (!is.null(code) && code %in% selected_codes) {
-              existing <- ba_map[[code]]
-              if (is.null(existing)) {
-                ba_map[[code]] <- data
-              } else {
-                existing[names(data)] <- data
-                ba_map[[code]] <- existing
-              }
+          }
+        } else if (identical(message_type, "SBA")) {
+          code <- data$code
+          if (!is.null(code) && code %in% selected_codes) {
+            existing <- ba_map[[code]]
+            if (is.null(existing)) {
+              ba_map[[code]] <- data
+            } else {
+              existing[names(data)] <- data
+              ba_map[[code]] <- existing
             }
-          } else if (identical(message_type, "ST")) {
-            code <- data$symbol
-            if (!is.null(code) && code %in% selected_codes) {
-              state$transaction_count <- state$transaction_count + 1L
-              existing <- ba_map[[code]]
-              update <- list(
-                matchPrice = data$last,
-                matchQtty = data$lastVol,
-                time = data$time
-              )
-              if (is.null(existing)) {
-                ba_map[[code]] <- update
-              } else {
-                existing[names(update)] <- update
-                ba_map[[code]] <- existing
-              }
+          }
+        } else if (identical(message_type, "ST")) {
+          code <- data$symbol
+          if (!is.null(code) && code %in% selected_codes) {
+            state$transaction_count <- state$transaction_count + 1L
+            existing <- ba_map[[code]]
+            update <- list(
+              matchPrice = data$last,
+              matchQtty = data$lastVol,
+              time = data$time
+            )
+            if (is.null(existing)) {
+              ba_map[[code]] <- update
+            } else {
+              existing[names(update)] <- update
+              ba_map[[code]] <- existing
             }
           }
         }
@@ -564,12 +648,7 @@ collect_realtime_rows <- function(selected_codes) {
     state$error <- event$message
   })
 
-  ws$onClose(function(event) {
-    state$closed <- TRUE
-  })
-
   ws$connect()
-
   start_time <- Sys.time()
   last_ping_at <- Sys.time()
 
@@ -577,7 +656,7 @@ collect_realtime_rows <- function(selected_codes) {
     later::run_now(timeout = 0.1)
 
     if (!is.null(state$error)) {
-      stop(sprintf("Realtime connection error: %s", state$error), call. = FALSE)
+      stop(sprintf("Loi ket noi realtime: %s", state$error), call. = FALSE)
     }
 
     if (difftime(Sys.time(), last_ping_at, units = "secs") >= keepalive_seconds / 2) {
@@ -608,25 +687,45 @@ collect_realtime_rows <- function(selected_codes) {
   )
 }
 
-main <- function() {
+run_quote_board <- function(selected_codes = NULL) {
   all_codes <- load_stock_codes()
-  selected_codes <- select_codes(all_codes, commandArgs(trailingOnly = TRUE))
+  if (length(all_codes) == 0L) {
+    message("Khong tim thay StockIDs. Script se chay voi 5 ma mac dinh hoac ma ban truyen vao.")
+  }
+  selected_codes <- select_codes(all_codes, if (is.null(selected_codes)) commandArgs(trailingOnly = TRUE) else selected_codes)
   fetched_at <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+  initialize_output_csv()
 
-  rows_data <- collect_realtime_rows(selected_codes)
-  sp_map <- rows_data$sp_map
-  ba_map <- rows_data$ba_map
-
-  rows <- lapply(
-    selected_codes,
-    function(code) merge_stock_data(code, sp_map[[code]], ba_map[[code]], fetched_at)
+  rows_data <- tryCatch(
+    collect_realtime_rows(selected_codes),
+    error = function(err) {
+      stop(
+        sprintf("Khong lay duoc du lieu realtime: %s", conditionMessage(err)),
+        call. = FALSE
+      )
+    }
+  )
+  df_ck <- do.call(
+    rbind,
+    lapply(
+      selected_codes,
+      function(ma) get_stock_data(NULL, ma, rows_data$sp_map, rows_data$ba_map, fetched_at)
+    )
   )
 
-  content <- paste(
-    vapply(seq_along(rows), function(index) format_block(index, rows[[index]]), character(1)),
-    collapse = "\n\n"
+  tryCatch(
+    {
+      utils::write.csv(
+        df_ck,
+        output_file,
+        row.names = FALSE,
+        fileEncoding = "UTF-8"
+      )
+    },
+    error = function(err) {
+      stop(sprintf("Khong ghi duoc file CSV: %s", conditionMessage(err)), call. = FALSE)
+    }
   )
-  writeLines(c(content, ""), output_file, useBytes = TRUE)
 
   cat("Da chon 5 ma co phieu:\n")
   for (code in selected_codes) {
@@ -636,9 +735,20 @@ main <- function() {
   cat(sprintf("So goi PUBLISH nhan duoc: %d\n", rows_data$publish_count))
   cat(sprintf("So message decode duoc: %d\n", rows_data$decoded_count))
   cat(sprintf("So giao dich realtime ST nhan duoc: %d\n", rows_data$transaction_count))
-  cat(sprintf("\nDa luu ket qua vao: %s\n", output_file))
+  cat(sprintf("\nDa luu file CSV vao: %s\n", output_file))
+
+  invisible(df_ck)
 }
 
-if (sys.nframe() == 0L) {
+main <- function() {
+  run_quote_board()
+}
+
+# Cach chay trong RStudio:
+# 1. Mo file nay.
+# 2. Co the dat truoc: selected_codes_input <- c("VND", "FPT", "HPG", "SSI", "VCB")
+# 3. Bam Source. Neu chua dat selected_codes_input, script se hoi nhap 5 ma.
+
+if (sys.nframe() == 0L || interactive()) {
   main()
 }
