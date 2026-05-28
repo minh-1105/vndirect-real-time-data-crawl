@@ -6,9 +6,15 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import paho.mqtt.client as mqtt
-
-from vndirect_realtime import create_client, stock_topic, transaction_topic
+try:
+    from vndirect_realtime import create_client, stock_topic, transaction_topic
+except ModuleNotFoundError as exc:
+    missing_module = exc.name or "dependency"
+    raise SystemExit(
+        "Thieu thu vien de chay realtime feed. "
+        f"Module bi thieu: {missing_module}. "
+        "Hay cai dependency bang lenh: python -m pip install -r requirements.txt"
+    ) from exc
 
 
 BASE_DIR = Path(__file__).resolve().parent
