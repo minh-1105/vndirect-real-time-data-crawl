@@ -8,7 +8,7 @@ This repository contains experimental scripts for retrieving stock price data fr
 - `parser_message.py`: parses `SP`, `BA`, `MI`, and `DE` messages.
 - `generate_bang_gia.py`: selects 5 stock symbols and writes the result to `bang_gia_chung_khoan.txt`.
 
-=======
+
 ## Current Notes
 
 - The public snapshot endpoint currently returns obfuscated data, so it is not suitable for directly building a quote board.
