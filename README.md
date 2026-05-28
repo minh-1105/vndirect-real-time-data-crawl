@@ -8,7 +8,7 @@ Repo nay gom cac script thu nghiem de lay du lieu gia chung khoan tu he thong VN
 - `parser_message.py`: parser cho cac ban tin `SP`, `BA`, `MI`, `DE`.
 - `generate_bang_gia.py`: chon 5 ma co phieu va ghi ket qua vao `bang_gia_chung_khoan.txt`.
 
-## Luu y hien tai
+## ATTENTION!!!!!!!!!
 
 - Endpoint snapshot public dang tra ve du lieu obfuscate, nen khong phu hop de map truc tiep thanh bang gia.
 - `generate_bang_gia.py` hien dung MQTT realtime feed.
