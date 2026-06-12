@@ -1,5 +1,21 @@
 # VNDIRECT Real-Time Data Crawl
 
+## Introduction
+
+This repository was cloned from [hoangnt2601/Real-time-data-vndirect](https://github.com/hoangnt2601/Real-time-data-vndirect) and has been extended with additional scripts, documentation, and runtime improvements for collecting VNDIRECT market data.
+
+Compared with the original repository, this version includes the following updates and improvements:
+
+- Added a new MQTT realtime data flow using `price-streaming-free.vndirect.com.vn`, including topic helpers for stock, transaction, and market-index subscriptions.
+- Added `mqtt_decoder.py` to decode obfuscated realtime payloads and normalize stock, bid/ask, transaction, and market-information messages.
+- Added `generate_bang_gia.py` to select or validate exactly 5 stock symbols, combine snapshot data with realtime MQTT updates, and write a quote board to `bang_gia_chung_khoan.txt`.
+- Added `snapshot.py` as a standalone snapshot API example for retrieving raw VNDIRECT snapshot rows.
+- Added R implementations through `generate_bang_gia.R` and `generate_bang_gia_realtime.R`, including package checks, symbol validation, realtime websocket/MQTT handling, and CSV output generation.
+- Updated the supported stock-symbol lists in `StockIDs/` for HSX, HNX, and UPC.
+- Improved runtime handling with clearer dependency errors, connection timeouts, network checks, and validation for invalid or duplicated stock symbols.
+- Removed tracked Python cache artifacts from the original repository and added `.gitignore` entries for local/generated files.
+- Expanded README documentation with installation steps, usage examples for Windows/Linux/RStudio, message-type notes, expected output fields, and common troubleshooting cases.
+
 This repository contains experimental scripts for retrieving stock price data from VNDIRECT services, including:
 
 - `snapshot.py`: calls the snapshot API for a list of stock symbols.
